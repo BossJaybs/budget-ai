@@ -49,16 +49,16 @@ export default function DashboardPage() {
     setUser(session.user);
 
     // Check if user is admin and redirect to admin panel
-    const { data: userData } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', session.user.id)
-      .single();
+    // const { data: userData } = await supabase
+    //   .from('users')
+    //   .select('role')
+    //   .eq('id', session.user.id)
+    //   .single();
 
-    if (userData && userData.role === 'ADMIN') {
-      router.push('/admin');
-      return;
-    }
+    // if (userData && userData.role === 'ADMIN') {
+    //   router.push('/admin');
+    //   return;
+    // }
   };
 
   const fetchTransactions = async () => {
