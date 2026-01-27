@@ -529,6 +529,65 @@ export default function DashboardPage() {
         </>
           )}
 
+          {currentView === 'transactions' && (
+            <div>
+              <h1 className="text-3xl font-bold mb-6">Transactions</h1>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="space-y-4">
+                    {filteredTransactions.map((transaction) => (
+                      <div key={transaction.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div>
+                          <p className="font-medium">{transaction.description}</p>
+                          <p className="text-sm text-muted-foreground">{transaction.category}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className={`font-medium ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                            {transaction.type === 'income' ? '+' : '-'}₱{transaction.amount.toFixed(2)}
+                          </p>
+                          <p className="text-sm text-muted-foreground">{new Date(transaction.date).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {currentView === 'reports' && (
+            <div>
+              <h1 className="text-3xl font-bold mb-6">Reports</h1>
+              <Card>
+                <CardContent className="pt-6">
+                  <p>Reports content coming soon...</p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {currentView === 'insights' && (
+            <div>
+              <h1 className="text-3xl font-bold mb-6">AI Insights</h1>
+              <Card>
+                <CardContent className="pt-6">
+                  <p>AI Insights content coming soon...</p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {currentView === 'chat' && (
+            <div>
+              <h1 className="text-3xl font-bold mb-6">Ask AI</h1>
+              <Card>
+                <CardContent className="pt-6">
+                  <p>Chat interface coming soon...</p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
           {currentView === 'admin' && adminStats && (
             <div>
               <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
