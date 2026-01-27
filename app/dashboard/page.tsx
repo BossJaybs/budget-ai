@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { BarChart3, TrendingUp, TrendingDown, Plus, Wallet, PieChart, MessageSquare, Brain, Loader2, Sun, Moon, Menu, User } from 'lucide-react';
+import { BarChart3, TrendingUp, TrendingDown, Plus, Wallet, PieChart, MessageSquare, Brain, Loader2, Sun, Moon, Menu, User, Users, DollarSign, Activity } from 'lucide-react';
 import { useTheme } from '@/lib/theme-context';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,19 +24,62 @@ interface Transaction {
 }
 
 export default function DashboardPage() {
-   const router = useRouter();
-   const pathname = usePathname();
-   const { theme, toggleTheme } = useTheme();
-   const [user, setUser] = useState<any>(null);
-   const [transactions, setTransactions] = useState<Transaction[]>([]);
-   const [loading, setLoading] = useState(true);
-   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-   const channelRef = useRef<any>(null);
+    const router = useRouter();
+    const pathname = usePathname();
+    const { theme, toggleTheme } = useTheme();
+    const [user, setUser] = useState<any>(null);
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [currentView, setCurrentView] = useState('overview');
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [adminStats, setAdminStats] = useState<any>(null);
+    const channelRef = useRef<any>(null);
 
   const currentDate = new Date();
   const currentMonth = currentDate.getMonth();
   const currentYear = currentDate.getFullYear();
   const currentDay = currentDate.getDate();
+
+  const fetchAdminStats = async () => {
+    try {
+      // Get total users
+      const { count: totalUsers } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true });
+
+      // Get all transactions
+      const { data: allTransactions } = await supabase
+        .from('transactions')
+        .select('*');
+
+      if (allTransactions) {
+        const totalIncome = allTransactions
+          .filter(t => t.type === 'income')
+          .reduce((sum, t) => sum + t.amount, 0);
+
+        const totalExpenses = Math.abs(allTransactions
+          .filter(t => t.type === 'expense')
+          .reduce((sum, t) => sum + t.amount, 0));
+
+        const netBalance = totalIncome - totalExpenses;
+
+        const recentTransactions = allTransactions
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .slice(0, 10);
+
+        setAdminStats({
+          totalUsers: totalUsers || 0,
+          totalIncome,
+          totalExpenses,
+          netBalance,
+          recentTransactions
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching admin stats:', error);
+    }
+  };
 
   const checkUser = async () => {
     const { data: { session }, error } = await supabase.auth.getSession();
@@ -48,17 +91,17 @@ export default function DashboardPage() {
     }
     setUser(session.user);
 
-    // Check if user is admin and redirect to admin panel
-    // const { data: userData } = await supabase
-    //   .from('users')
-    //   .select('role')
-    //   .eq('id', session.user.id)
-    //   .single();
+    // Check if user is admin
+    const { data: userData } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', session.user.id)
+      .single();
 
-    // if (userData && userData.role === 'ADMIN') {
-    //   router.push('/admin');
-    //   return;
-    // }
+    if (userData && userData.role === 'ADMIN') {
+      setIsAdmin(true);
+      fetchAdminStats();
+    }
   };
 
   const fetchTransactions = async () => {
@@ -286,30 +329,37 @@ export default function DashboardPage() {
         </Sheet>
 
         <nav className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-             <div className="flex flex-wrap gap-2 sm:gap-4 py-4">
-               <Button variant={pathname === '/dashboard' ? 'default' : 'outline'} asChild className="flex-1 sm:flex-none">
-                 <Link href="/dashboard">Overview</Link>
-               </Button>
-               <Button variant={pathname === '/dashboard/transactions' ? 'default' : 'outline'} asChild className="flex-1 sm:flex-none">
-                 <Link href="/dashboard/transactions">Transactions</Link>
-               </Button>
-               <Button variant={pathname === '/dashboard/reports' ? 'default' : 'outline'} asChild className="flex-1 sm:flex-none">
-                 <Link href="/dashboard/reports">Reports</Link>
-               </Button>
-               <Button variant={pathname === '/dashboard/insights' ? 'default' : 'outline'} asChild className="flex-1 sm:flex-none">
-                 <Link href="/dashboard/insights">AI Insights</Link>
-               </Button>
-               <Button variant={pathname === '/dashboard/chat' ? 'default' : 'outline'} asChild className="flex-1 sm:flex-none">
-                 <Link href="/dashboard/chat">Ask AI</Link>
-               </Button>
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex flex-wrap gap-2 sm:gap-4 py-4">
+                <Button variant={currentView === 'overview' ? 'default' : 'outline'} onClick={() => setCurrentView('overview')} className="flex-1 sm:flex-none">
+                  Overview
+                </Button>
+                <Button variant={currentView === 'transactions' ? 'default' : 'outline'} onClick={() => setCurrentView('transactions')} className="flex-1 sm:flex-none">
+                  Transactions
+                </Button>
+                <Button variant={currentView === 'reports' ? 'default' : 'outline'} onClick={() => setCurrentView('reports')} className="flex-1 sm:flex-none">
+                  Reports
+                </Button>
+                <Button variant={currentView === 'insights' ? 'default' : 'outline'} onClick={() => setCurrentView('insights')} className="flex-1 sm:flex-none">
+                  AI Insights
+                </Button>
+                <Button variant={currentView === 'chat' ? 'default' : 'outline'} onClick={() => setCurrentView('chat')} className="flex-1 sm:flex-none">
+                  Ask AI
+                </Button>
+                {isAdmin && (
+                  <Button variant={currentView === 'admin' ? 'default' : 'outline'} onClick={() => setCurrentView('admin')} className="flex-1 sm:flex-none">
+                    Admin Panel
+                  </Button>
+                )}
              </div>
            </div>
          </nav>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Overview Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {currentView === 'overview' && (
+            <>
+              {/* Overview Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Balance</CardTitle>
@@ -452,6 +502,82 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
+        </>
+          )}
+
+          {currentView === 'admin' && adminStats && (
+            <div>
+              <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{adminStats.totalUsers}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Income</CardTitle>
+                    <TrendingUp className="h-4 w-4 text-green-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-green-600">₱{adminStats.totalIncome.toFixed(2)}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
+                    <TrendingDown className="h-4 w-4 text-red-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-red-600">₱{adminStats.totalExpenses.toFixed(2)}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Net Balance</CardTitle>
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className={`text-2xl font-bold ${adminStats.netBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      ₱{adminStats.netBalance.toFixed(2)}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="h-5 w-5" />
+                    Recent Activity
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {adminStats.recentTransactions.map((transaction: any) => (
+                      <div key={transaction.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div>
+                          <p className="font-medium">{transaction.description}</p>
+                          <p className="text-sm text-muted-foreground">{transaction.category}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className={`font-medium ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                            {transaction.type === 'income' ? '+' : '-'}₱{Math.abs(transaction.amount).toFixed(2)}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(transaction.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </div>
     </div>
   );
