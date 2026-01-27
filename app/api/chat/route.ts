@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama3-8b-8192', // Groq model for financial analysis
+        model: 'llama-3.1-8b-instant', // Groq model for financial analysis
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: `${context}\n\nUser question: ${message}` }
