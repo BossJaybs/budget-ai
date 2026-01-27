@@ -313,7 +313,7 @@ export default function DashboardPage() {
             <div className="flex items-center space-x-4">
               <Wallet className="h-8 w-8 text-indigo-600" />
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                {isAdmin ? 'Admin Panel' : 'BudgetAI Dashboard'}
+                {isAdmin ? 'Admin Panel' : 'AlphaWealth Dashboard'}
               </h1>
             </div>
             <div className="hidden md:flex items-center space-x-4">
