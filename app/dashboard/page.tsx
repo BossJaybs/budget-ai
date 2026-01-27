@@ -66,6 +66,32 @@ export default function DashboardPage() {
     }
   };
 
+  // Real-time updates for admin
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const channel = supabase
+      .channel('admin-transactions')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'transactions'
+        },
+        (payload) => {
+          console.log('Transaction change:', payload);
+          // Refetch admin stats when transactions change
+          fetchAdminStats();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isAdmin]);
+
   const checkUser = async () => {
     const { data: { session }, error } = await supabase.auth.getSession();
     console.log('Dashboard checkUser - session:', session, 'user:', session?.user, 'error:', error);
