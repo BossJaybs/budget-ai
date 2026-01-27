@@ -382,6 +382,29 @@ export default function DashboardPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {currentView === 'overview' && (
             <>
+              {/* Add Transaction Form */}
+              <Card className="mb-8">
+                <CardHeader>
+                  <CardTitle>Quick Add Transaction</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <Input placeholder="Description" />
+                    <Input type="number" placeholder="Amount" />
+                    <Select>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="income">Income</SelectItem>
+                        <SelectItem value="expense">Expense</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button>Add Transaction</Button>
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Overview Cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>
