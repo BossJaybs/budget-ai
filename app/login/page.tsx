@@ -41,10 +41,15 @@ export default function LoginPage() {
       }
 
       if (data.user) {
-        // Wait a moment for session to be established
-        setTimeout(() => {
-          window.location.href = '/dashboard';
-        }, 500);
+        // Wait for session to be established
+        setTimeout(async () => {
+          const { data: session } = await supabase.auth.getSession();
+          if (session.session) {
+            window.location.href = '/dashboard';
+          } else {
+            setError('Session not established. Please try again.');
+          }
+        }, 1000);
       }
     } catch (err: any) {
       setError(err.message);
