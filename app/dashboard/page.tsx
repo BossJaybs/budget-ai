@@ -11,6 +11,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine, Cell } from 'recharts';
 
@@ -34,6 +38,12 @@ export default function DashboardPage() {
     const [currentView, setCurrentView] = useState('overview');
     const [isAdmin, setIsAdmin] = useState(false);
     const [adminStats, setAdminStats] = useState<any>(null);
+    const [adminUsers, setAdminUsers] = useState<any[]>([]);
+    const [selectedUser, setSelectedUser] = useState<any>(null);
+    const [showUserDetails, setShowUserDetails] = useState(false);
+    const [showFinancialHistory, setShowFinancialHistory] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [roleFilter, setRoleFilter] = useState<'all' | 'USER' | 'ADMIN'>('all');
     const channelRef = useRef<any>(null);
 
   const currentDate = new Date();
@@ -43,37 +53,61 @@ export default function DashboardPage() {
 
   const fetchAdminStats = async () => {
     try {
-      // Get total users
-      const { count: totalUsers } = await supabase
+      // Get all users with stats
+      const { data: users } = await supabase
         .from('users')
-        .select('*', { count: 'exact', head: true });
+        .select('*')
+        .order('createdAt', { ascending: false });
 
-      // Get all transactions
-      const { data: allTransactions } = await supabase
-        .from('transactions')
-        .select('*');
+      if (users) {
+        // Get transaction summaries for each user
+        const usersWithStats = await Promise.all(
+          users.map(async (user: any) => {
+            const { data: transactions } = await supabase
+              .from('transactions')
+              .select('amount, type')
+              .eq('userId', user.id);
 
-      if (allTransactions) {
-        const totalIncome = allTransactions
-          .filter(t => t.type === 'income')
-          .reduce((sum, t) => sum + t.amount, 0);
+            const totalIncome = transactions
+              ?.filter((t: any) => t.type === 'income')
+              .reduce((sum: number, t: any) => sum + t.amount, 0) || 0;
 
-        const totalExpenses = Math.abs(allTransactions
-          .filter(t => t.type === 'expense')
-          .reduce((sum, t) => sum + t.amount, 0));
+            const totalExpenses = Math.abs(
+              transactions
+                ?.filter((t: any) => t.type === 'expense')
+                .reduce((sum: number, t: any) => sum + t.amount, 0) || 0
+            );
 
+            return {
+              ...user,
+              totalIncome,
+              totalExpenses,
+              status: 'active' // For now, assume all active
+            };
+          })
+        );
+
+        setAdminUsers(usersWithStats);
+
+        // Calculate totals
+        const totalUsers = usersWithStats.length;
+        const totalIncome = usersWithStats.reduce((sum, user) => sum + user.totalIncome, 0);
+        const totalExpenses = usersWithStats.reduce((sum, user) => sum + user.totalExpenses, 0);
         const netBalance = totalIncome - totalExpenses;
 
-        const recentTransactions = allTransactions
-          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-          .slice(0, 10);
+        // Get recent transactions across all users
+        const { data: allTransactions } = await supabase
+          .from('transactions')
+          .select('*')
+          .order('createdAt', { ascending: false })
+          .limit(10);
 
         setAdminStats({
-          totalUsers: totalUsers || 0,
+          totalUsers,
           totalIncome,
           totalExpenses,
           netBalance,
-          recentTransactions
+          recentTransactions: allTransactions || []
         });
       }
     } catch (error) {
@@ -141,6 +175,41 @@ export default function DashboardPage() {
     const d = new Date(t.date);
     return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
   });
+
+  const filteredUsers = adminUsers.filter(user => {
+    const matchesSearch = user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (user.name?.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+    return matchesSearch && matchesRole;
+  });
+
+  const toggleUserStatus = async (userId: string, currentRole: string) => {
+    const newRole = currentRole === 'ADMIN' ? 'USER' : 'ADMIN';
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ role: newRole })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      setAdminUsers(adminUsers.map(user =>
+        user.id === userId ? { ...user, role: newRole } : user
+      ));
+    } catch (error) {
+      console.error('Error updating user role:', error);
+    }
+  };
+
+  const viewUserDetails = (user: any) => {
+    setSelectedUser(user);
+    setShowUserDetails(true);
+  };
+
+  const viewFinancialHistory = (user: any) => {
+    setSelectedUser(user);
+    setShowFinancialHistory(true);
+  };
 
   useEffect(() => {
     checkUser();
@@ -552,36 +621,198 @@ export default function DashboardPage() {
                   </CardContent>
                 </Card>
               </div>
-              <Card>
+              <Card className="col-span-full">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Activity className="h-5 w-5" />
-                    Recent Activity
-                  </CardTitle>
+                  <CardTitle>User Management</CardTitle>
+                  <div className="flex gap-4">
+                    <Input
+                      placeholder="Search by email or name..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="max-w-sm"
+                    />
+                    <Select value={roleFilter} onValueChange={(value: any) => setRoleFilter(value)}>
+                      <SelectTrigger className="w-48">
+                        <SelectValue placeholder="Filter by role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Roles</SelectItem>
+                        <SelectItem value="USER">Users</SelectItem>
+                        <SelectItem value="ADMIN">Admins</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {adminStats.recentTransactions.map((transaction: any) => (
-                      <div key={transaction.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div>
-                          <p className="font-medium">{transaction.description}</p>
-                          <p className="text-sm text-muted-foreground">{transaction.category}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className={`font-medium ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                            {transaction.type === 'income' ? '+' : '-'}₱{Math.abs(transaction.amount).toFixed(2)}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {new Date(transaction.createdAt).toLocaleDateString()}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>User ID</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Date Registered</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Total Income</TableHead>
+                        <TableHead>Total Expenses</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredUsers.map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell className="font-mono text-sm">{user.id.slice(0, 8)}...</TableCell>
+                          <TableCell>{user.email}</TableCell>
+                          <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                          <TableCell>
+                            <Badge variant={user.role === 'ADMIN' ? 'default' : 'secondary'}>
+                              {user.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-green-600">₱{user.totalIncome.toFixed(2)}</TableCell>
+                          <TableCell className="text-red-600">₱{user.totalExpenses.toFixed(2)}</TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button variant="outline" size="sm" onClick={() => viewUserDetails(user)}>
+                                View Details
+                              </Button>
+                              <Button variant="outline" size="sm" onClick={() => viewFinancialHistory(user)}>
+                                Financial History
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => toggleUserStatus(user.id, user.role)}
+                              >
+                                {user.role === 'ADMIN' ? 'Demote' : 'Promote'}
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </CardContent>
               </Card>
             </div>
           )}
+
+          {/* User Details Dialog */}
+          <Dialog open={showUserDetails} onOpenChange={setShowUserDetails}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>User Details</DialogTitle>
+              </DialogHeader>
+              {selectedUser && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="font-medium">User ID:</label>
+                    <p className="font-mono text-sm">{selectedUser.id}</p>
+                  </div>
+                  <div>
+                    <label className="font-medium">Email:</label>
+                    <p>{selectedUser.email}</p>
+                  </div>
+                  <div>
+                    <label className="font-medium">Name:</label>
+                    <p>{selectedUser.name || 'Not provided'}</p>
+                  </div>
+                  <div>
+                    <label className="font-medium">Role:</label>
+                    <Badge variant={selectedUser.role === 'ADMIN' ? 'default' : 'secondary'}>
+                      {selectedUser.role}
+                    </Badge>
+                  </div>
+                  <div>
+                    <label className="font-medium">Registered:</label>
+                    <p>{new Date(selectedUser.createdAt).toLocaleDateString()}</p>
+                  </div>
+                  <div>
+                    <label className="font-medium">Total Income:</label>
+                    <p className="text-green-600">₱{selectedUser.totalIncome.toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <label className="font-medium">Total Expenses:</label>
+                    <p className="text-red-600">₱{selectedUser.totalExpenses.toFixed(2)}</p>
+                  </div>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+
+          {/* Financial History Dialog */}
+          <Dialog open={showFinancialHistory} onOpenChange={setShowFinancialHistory}>
+            <DialogContent className="max-w-4xl">
+              <DialogHeader>
+                <DialogTitle>Financial History - {selectedUser?.email}</DialogTitle>
+              </DialogHeader>
+              {selectedUser && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm">Total Income</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-2xl font-bold text-green-600">₱{selectedUser.totalIncome.toFixed(2)}</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm">Total Expenses</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-2xl font-bold text-red-600">₱{selectedUser.totalExpenses.toFixed(2)}</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm">Net Balance</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className={`text-2xl font-bold ${(selectedUser.totalIncome - selectedUser.totalExpenses) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          ₱{(selectedUser.totalIncome - selectedUser.totalExpenses).toFixed(2)}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-medium mb-2">Transaction History</h3>
+                    <div className="max-h-96 overflow-y-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead>Description</TableHead>
+                            <TableHead>Category</TableHead>
+                            <TableHead className="text-right">Amount</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {adminStats?.recentTransactions
+                            ?.filter((t: any) => t.userId === selectedUser.id)
+                            .map((transaction: any) => (
+                              <TableRow key={transaction.id}>
+                                <TableCell>{new Date(transaction.createdAt).toLocaleDateString()}</TableCell>
+                                <TableCell>
+                                  <Badge variant={transaction.type === 'income' ? 'default' : 'destructive'}>
+                                    {transaction.type}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>{transaction.description}</TableCell>
+                                <TableCell>{transaction.category}</TableCell>
+                                <TableCell className={`text-right font-medium ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                                  {transaction.type === 'income' ? '+' : '-'}₱{Math.abs(transaction.amount).toFixed(2)}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
         </div>
     </div>
   );
