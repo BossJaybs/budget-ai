@@ -312,7 +312,9 @@ export default function DashboardPage() {
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">
               <Wallet className="h-8 w-8 text-indigo-600" />
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">BudgetAI Dashboard</h1>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                {isAdmin ? 'Admin Panel' : 'BudgetAI Dashboard'}
+              </h1>
             </div>
             <div className="hidden md:flex items-center space-x-4">
                <button
