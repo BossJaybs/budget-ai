@@ -29,23 +29,11 @@ export async function middleware(req: NextRequest) {
 
   // Check if path starts with /admin
   if (path.startsWith("/admin")) {
-    // Allow access to admin login page
-    if (path === "/admin/login") {
-      return res;
-    }
-
-    // Check for simple admin session (demo purposes)
-    const adminSession = req.cookies.get("admin_session")?.value;
-    if (adminSession === "true") {
-      return res;
-    }
-
-    // Otherwise, check Supabase auth and role
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-      // Redirect to admin login for demo
-      return NextResponse.redirect(new URL("/admin/login", req.url));
+      // Redirect to login if not authenticated
+      return NextResponse.redirect(new URL("/login", req.url));
     }
 
     // Check user role from database
