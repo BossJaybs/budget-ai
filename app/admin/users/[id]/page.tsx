@@ -120,7 +120,9 @@ export default function UserFinancialHistory() {
       .reduce((sum, t) => sum + t.amount, 0)
   );
 
-  const categories = [...new Set(transactions.map(t => t.category))];
+  const categories = transactions
+    .map(t => t.category)
+    .filter((value, index, self) => self.indexOf(value) === index);
 
   if (loading) {
     return <div className="flex justify-center items-center h-64">Loading...</div>;
