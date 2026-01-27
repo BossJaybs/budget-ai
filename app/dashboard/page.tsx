@@ -53,63 +53,97 @@ export default function DashboardPage() {
 
   const fetchAdminStats = async () => {
     try {
-      // Get all users with stats
-      const { data: users } = await supabase
-        .from('users')
-        .select('*')
-        .order('createdAt', { ascending: false });
+      // For admin, use service client to get all auth users
+      const { createClient } = await import('@supabase/supabase-js');
+      const adminSupabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
 
-      if (users) {
-        // Get transaction summaries for each user
-        const usersWithStats = await Promise.all(
-          users.map(async (user: any) => {
-            const { data: transactions } = await supabase
-              .from('transactions')
-              .select('amount, type')
-              .eq('userId', user.id);
+      // Get all auth users
+      const { data: authUsers, error: authError } = await adminSupabase.auth.admin.listUsers();
 
-            const totalIncome = transactions
-              ?.filter((t: any) => t.type === 'income')
-              .reduce((sum: number, t: any) => sum + t.amount, 0) || 0;
-
-            const totalExpenses = Math.abs(
-              transactions
-                ?.filter((t: any) => t.type === 'expense')
-                .reduce((sum: number, t: any) => sum + t.amount, 0) || 0
-            );
-
-            return {
-              ...user,
-              totalIncome,
-              totalExpenses,
-              status: 'active' // For now, assume all active
-            };
-          })
-        );
-
-        setAdminUsers(usersWithStats);
-
-        // Calculate totals
-        const totalUsers = usersWithStats.length;
-        const totalIncome = usersWithStats.reduce((sum, user) => sum + user.totalIncome, 0);
-        const totalExpenses = usersWithStats.reduce((sum, user) => sum + user.totalExpenses, 0);
-        const netBalance = totalIncome - totalExpenses;
-
-        // Get recent transactions across all users
-        const { data: allTransactions } = await supabase
-          .from('transactions')
-          .select('*')
-          .order('createdAt', { ascending: false })
-          .limit(10);
-
-        setAdminStats({
-          totalUsers,
-          totalIncome,
-          totalExpenses,
-          netBalance,
-          recentTransactions: allTransactions || []
-        });
+      if (authError) {
+        console.error('Error fetching auth users:', authError);
+        return;
       }
+
+      // Get users table data
+      const { data: usersData } = await supabase
+        .from('users')
+        .select('*');
+
+      const usersMap = new Map(usersData?.map(u => [u.id, u]) || []);
+
+      // Combine auth users with users table data
+      const allUsers = authUsers.users.map(authUser => {
+        const userData = usersMap.get(authUser.id);
+        return {
+          id: authUser.id,
+          email: authUser.email,
+          name: authUser.user_metadata?.name || userData?.name || null,
+          role: userData?.role || 'USER',
+          createdAt: authUser.created_at,
+          status: authUser.email_confirmed_at ? 'active' : 'unverified',
+          totalIncome: 0,
+          totalExpenses: 0,
+          ...userData
+        };
+      });
+
+      // Get transaction summaries for verified users
+      const usersWithStats = await Promise.all(
+        allUsers.map(async (user: any) => {
+          if (user.status === 'unverified') {
+            return user; // No transactions for unverified users
+          }
+
+          const { data: transactions } = await supabase
+            .from('transactions')
+            .select('amount, type')
+            .eq('userId', user.id);
+
+          const totalIncome = transactions
+            ?.filter((t: any) => t.type === 'income')
+            .reduce((sum: number, t: any) => sum + t.amount, 0) || 0;
+
+          const totalExpenses = Math.abs(
+            transactions
+              ?.filter((t: any) => t.type === 'expense')
+              .reduce((sum: number, t: any) => sum + t.amount, 0) || 0
+          );
+
+          return {
+            ...user,
+            totalIncome,
+            totalExpenses
+          };
+        })
+      );
+
+      setAdminUsers(usersWithStats);
+
+      // Calculate totals (only for verified users with data)
+      const verifiedUsers = usersWithStats.filter(u => u.status === 'active');
+      const totalUsers = usersWithStats.length;
+      const totalIncome = verifiedUsers.reduce((sum, user) => sum + user.totalIncome, 0);
+      const totalExpenses = verifiedUsers.reduce((sum, user) => sum + user.totalExpenses, 0);
+      const netBalance = totalIncome - totalExpenses;
+
+      // Get recent transactions across all users
+      const { data: allTransactions } = await supabase
+        .from('transactions')
+        .select('*')
+        .order('createdAt', { ascending: false })
+        .limit(10);
+
+      setAdminStats({
+        totalUsers,
+        totalIncome,
+        totalExpenses,
+        netBalance,
+        recentTransactions: allTransactions || []
+      });
     } catch (error) {
       console.error('Error fetching admin stats:', error);
     }
@@ -663,28 +697,32 @@ export default function DashboardPage() {
                           <TableCell>{user.email}</TableCell>
                           <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
                           <TableCell>
-                            <Badge variant={user.role === 'ADMIN' ? 'default' : 'secondary'}>
-                              {user.status}
+                            <Badge variant={user.status === 'active' ? (user.role === 'ADMIN' ? 'default' : 'secondary') : 'outline'}>
+                              {user.status === 'active' ? user.role : user.status}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-green-600">₱{user.totalIncome.toFixed(2)}</TableCell>
                           <TableCell className="text-red-600">₱{user.totalExpenses.toFixed(2)}</TableCell>
                           <TableCell>
-                            <div className="flex gap-2">
-                              <Button variant="outline" size="sm" onClick={() => viewUserDetails(user)}>
-                                View Details
-                              </Button>
-                              <Button variant="outline" size="sm" onClick={() => viewFinancialHistory(user)}>
-                                Financial History
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => toggleUserStatus(user.id, user.role)}
-                              >
-                                {user.role === 'ADMIN' ? 'Demote' : 'Promote'}
-                              </Button>
-                            </div>
+                            {user.status === 'active' ? (
+                              <div className="flex gap-2">
+                                <Button variant="outline" size="sm" onClick={() => viewUserDetails(user)}>
+                                  View Details
+                                </Button>
+                                <Button variant="outline" size="sm" onClick={() => viewFinancialHistory(user)}>
+                                  Financial History
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => toggleUserStatus(user.id, user.role)}
+                                >
+                                  {user.role === 'ADMIN' ? 'Demote' : 'Promote'}
+                                </Button>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">Unverified user</span>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}
