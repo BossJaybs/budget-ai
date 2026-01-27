@@ -75,13 +75,36 @@ export default function DashboardPage() {
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'transactions'
         },
         (payload) => {
-          console.log('Transaction change:', payload);
-          // Refetch admin stats when transactions change
+          console.log('Transaction inserted:', payload);
+          fetchAdminStats();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'transactions'
+        },
+        (payload) => {
+          console.log('Transaction updated:', payload);
+          fetchAdminStats();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'transactions'
+        },
+        (payload) => {
+          console.log('Transaction deleted:', payload);
           fetchAdminStats();
         }
       )
