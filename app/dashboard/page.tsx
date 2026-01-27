@@ -558,22 +558,79 @@ export default function DashboardPage() {
           {currentView === 'reports' && (
             <div>
               <h1 className="text-3xl font-bold mb-6">Reports</h1>
-              <Card>
-                <CardContent className="pt-6">
-                  <p>Reports content coming soon...</p>
-                </CardContent>
-              </Card>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Monthly Overview</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ChartContainer config={chartConfig} className="h-64 w-full">
+                      <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis
+                          dataKey="day"
+                          tick={{ fontSize: 12 }}
+                          interval={0}
+                          angle={-45}
+                          textAnchor="end"
+                          height={60}
+                        />
+                        <YAxis
+                          tick={{ fontSize: 12 }}
+                          tickFormatter={(value) => formatCurrency(value)}
+                        />
+                        <ChartTooltip
+                          content={
+                            <ChartTooltipContent
+                              formatter={(value) => [formatCurrency(value as number), "Net Amount"]}
+                              labelFormatter={(label) => `Day ${label}`}
+                            />
+                          }
+                        />
+                        <ReferenceLine y={0} stroke="#666" strokeDasharray="2 2" />
+                        <ReferenceLine x={currentDay} stroke="#000" strokeDasharray="2 2" />
+                        <Bar dataKey="net" radius={[2, 2, 0, 0]}>
+                          {chartData.map((entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={entry.net >= 0 ? '#10b981' : '#ef4444'}
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ChartContainer>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Spending by Category</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p>Category breakdown chart coming soon...</p>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           )}
 
           {currentView === 'insights' && (
             <div>
               <h1 className="text-3xl font-bold mb-6">AI Insights</h1>
-              <Card>
-                <CardContent className="pt-6">
-                  <p>AI Insights content coming soon...</p>
-                </CardContent>
-              </Card>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                {/* AI Insights would go here - simplified version */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Brain className="h-5 w-5 text-purple-600" />
+                      <span>Spending Analysis</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-gray-600">AI-powered insights about your spending patterns.</p>
+                    <Badge variant="secondary" className="mt-2">Coming Soon</Badge>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           )}
 
@@ -582,7 +639,17 @@ export default function DashboardPage() {
               <h1 className="text-3xl font-bold mb-6">Ask AI</h1>
               <Card>
                 <CardContent className="pt-6">
-                  <p>Chat interface coming soon...</p>
+                  <div className="space-y-4">
+                    <div className="h-64 bg-gray-50 rounded-lg p-4 overflow-y-auto">
+                      <div className="text-center text-gray-500">
+                        AI chat interface would be implemented here...
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Input placeholder="Ask me anything about your finances..." />
+                      <Button>Send</Button>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </div>
