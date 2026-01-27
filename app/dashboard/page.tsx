@@ -100,6 +100,7 @@ export default function DashboardPage() {
 
     if (userData && userData.role === 'ADMIN') {
       setIsAdmin(true);
+      setCurrentView('admin');
       fetchAdminStats();
     }
   };
@@ -331,29 +332,32 @@ export default function DashboardPage() {
         <nav className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex flex-wrap gap-2 sm:gap-4 py-4">
-                <Button variant={currentView === 'overview' ? 'default' : 'outline'} onClick={() => setCurrentView('overview')} className="flex-1 sm:flex-none">
-                  Overview
-                </Button>
-                <Button variant={currentView === 'transactions' ? 'default' : 'outline'} onClick={() => setCurrentView('transactions')} className="flex-1 sm:flex-none">
-                  Transactions
-                </Button>
-                <Button variant={currentView === 'reports' ? 'default' : 'outline'} onClick={() => setCurrentView('reports')} className="flex-1 sm:flex-none">
-                  Reports
-                </Button>
-                <Button variant={currentView === 'insights' ? 'default' : 'outline'} onClick={() => setCurrentView('insights')} className="flex-1 sm:flex-none">
-                  AI Insights
-                </Button>
-                <Button variant={currentView === 'chat' ? 'default' : 'outline'} onClick={() => setCurrentView('chat')} className="flex-1 sm:flex-none">
-                  Ask AI
-                </Button>
-                {isAdmin && (
+                {isAdmin ? (
                   <Button variant={currentView === 'admin' ? 'default' : 'outline'} onClick={() => setCurrentView('admin')} className="flex-1 sm:flex-none">
                     Admin Panel
                   </Button>
+                ) : (
+                  <>
+                    <Button variant={currentView === 'overview' ? 'default' : 'outline'} onClick={() => setCurrentView('overview')} className="flex-1 sm:flex-none">
+                      Overview
+                    </Button>
+                    <Button variant={currentView === 'transactions' ? 'default' : 'outline'} onClick={() => setCurrentView('transactions')} className="flex-1 sm:flex-none">
+                      Transactions
+                    </Button>
+                    <Button variant={currentView === 'reports' ? 'default' : 'outline'} onClick={() => setCurrentView('reports')} className="flex-1 sm:flex-none">
+                      Reports
+                    </Button>
+                    <Button variant={currentView === 'insights' ? 'default' : 'outline'} onClick={() => setCurrentView('insights')} className="flex-1 sm:flex-none">
+                      AI Insights
+                    </Button>
+                    <Button variant={currentView === 'chat' ? 'default' : 'outline'} onClick={() => setCurrentView('chat')} className="flex-1 sm:flex-none">
+                      Ask AI
+                    </Button>
+                  </>
                 )}
-             </div>
-           </div>
-         </nav>
+              </div>
+            </div>
+          </nav>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {currentView === 'overview' && (
