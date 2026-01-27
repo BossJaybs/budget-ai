@@ -305,25 +305,25 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow-sm border-b sticky top-0 z-10">
+      <header className="bg-black/80 backdrop-blur-sm shadow-lg border-b border-gray-700 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">
-              <Wallet className="h-8 w-8 text-indigo-600" />
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              <Wallet className="h-8 w-8 text-indigo-400" />
+              <h1 className="text-2xl font-bold text-white">
                 {isAdmin ? 'Admin Panel' : 'AlphaWealth Dashboard'}
               </h1>
             </div>
             <div className="hidden md:flex items-center space-x-4">
                <button
                  onClick={toggleTheme}
-                 className="p-2 rounded-lg bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors"
+                 className="p-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors"
                >
-                 {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+                 {theme === 'light' ? <Moon size={20} className="text-white" /> : <Sun size={20} className="text-yellow-400" />}
                </button>
-               <span className="text-sm text-gray-600 dark:text-gray-300">Welcome, {user?.email}</span>
+                <span className="text-sm text-gray-300">Welcome, {user?.email}</span>
                <Button variant="outline" asChild>
                  <Link href="/dashboard/profile">
                    <User className="h-4 w-4 mr-2" />
