@@ -47,40 +47,45 @@ export default function AdminDashboard() {
 
   const fetchDashboardStats = async () => {
     try {
-      // Get total users
-      const { count: totalUsers } = await supabase
-        .from('users')
-        .select('*', { count: 'exact', head: true });
-
-      // Get all transactions for calculations
-      const { data: allTransactions } = await supabase
-        .from('transactions')
-        .select('*');
-
-      if (allTransactions) {
-        const totalIncome = allTransactions
-          .filter(t => t.type === 'income')
-          .reduce((sum, t) => sum + t.amount, 0);
-
-        const totalExpenses = Math.abs(allTransactions
-          .filter(t => t.type === 'expense')
-          .reduce((sum, t) => sum + t.amount, 0));
-
-        const netBalance = totalIncome - totalExpenses;
-
-        // Get recent transactions (last 10)
-        const recentTransactions = allTransactions
-          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-          .slice(0, 10);
-
-        setStats({
-          totalUsers: totalUsers || 0,
-          totalIncome,
-          totalExpenses,
-          netBalance,
-          recentTransactions
-        });
+      // Get all users data from admin API
+      const usersResponse = await fetch('/api/admin/all-users');
+      if (!usersResponse.ok) {
+        throw new Error('Failed to fetch users data');
       }
+      const allUsers = await usersResponse.json();
+
+      // Calculate total users
+      const totalUsers = allUsers.length;
+
+      // Get all transactions for calculations (using admin API)
+      const transactionsResponse = await fetch('/api/admin/transactions');
+      let allTransactions = [];
+      if (transactionsResponse.ok) {
+        allTransactions = await transactionsResponse.json();
+      }
+
+      const totalIncome = allTransactions
+        .filter((t: any) => t.type === 'income')
+        .reduce((sum: number, t: any) => sum + t.amount, 0);
+
+      const totalExpenses = Math.abs(allTransactions
+        .filter((t: any) => t.type === 'expense')
+        .reduce((sum: number, t: any) => sum + t.amount, 0));
+
+      const netBalance = totalIncome - totalExpenses;
+
+      // Get recent transactions (last 10)
+      const recentTransactions = allTransactions
+        .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 10);
+
+      setStats({
+        totalUsers,
+        totalIncome,
+        totalExpenses,
+        netBalance,
+        recentTransactions
+      });
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
     } finally {

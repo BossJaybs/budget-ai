@@ -56,41 +56,14 @@ export default function UserManagement() {
 
   const fetchUsers = async () => {
     try {
-      // Get all users
-      const { data: usersData } = await supabase
-        .from('users')
-        .select('*')
-        .order('createdAt', { ascending: false });
-
-      if (usersData) {
-        // Get transaction summaries for each user
-        const usersWithStats = await Promise.all(
-          usersData.map(async (user) => {
-            const { data: transactions } = await supabase
-              .from('transactions')
-              .select('amount, type')
-              .eq('userId', user.id);
-
-            const totalIncome = transactions
-              ?.filter(t => t.type === 'income')
-              .reduce((sum, t) => sum + t.amount, 0) || 0;
-
-            const totalExpenses = Math.abs(
-              transactions
-                ?.filter(t => t.type === 'expense')
-                .reduce((sum, t) => sum + t.amount, 0) || 0
-            );
-
-            return {
-              ...user,
-              totalIncome,
-              totalExpenses
-            };
-          })
-        );
-
-        setUsers(usersWithStats);
+      // Use admin API to get all users with stats
+      const response = await fetch('/api/admin/all-users');
+      if (!response.ok) {
+        throw new Error('Failed to fetch users');
       }
+
+      const usersData = await response.json();
+      setUsers(usersData);
     } catch (error) {
       console.error('Error fetching users:', error);
     } finally {
