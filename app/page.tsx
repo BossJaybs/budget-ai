@@ -13,8 +13,8 @@ export default function Home() {
       <nav className={styles.nav}>
         <div className={styles.navContent}>
           <div className={styles.logo}>
-            <img src="/BudgetAI.png" alt="BudgetAI Logo" className={styles.logoIcon} />
-            <span className={styles.logoText}>BudgetAI</span>
+            <img src="/BudgetAI.png" alt="AlphaWealth Logo" className={styles.logoIcon} />
+            <span className={styles.logoText}>AlphaWealth</span>
           </div>
           <div className={styles.navLinks}>
             <a href="#features" className={styles.navButton}>Features</a>
